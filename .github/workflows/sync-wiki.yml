@@ -1,0 +1,73 @@
+name: Sync GitHub Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'wiki/**'
+      - '.github/workflows/sync-wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-github-wiki
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Publish wiki/*.md to the live GitHub Wiki
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main repository
+        uses: actions/checkout@v4
+
+      - name: Clone live wiki repository
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" /tmp/live-wiki
+
+      - name: Replace live wiki with canonical pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          find /tmp/live-wiki -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a wiki/. /tmp/live-wiki/
+          test -s /tmp/live-wiki/Home.md
+          test -s /tmp/live-wiki/_Sidebar.md
+          test -s /tmp/live-wiki/Things-You-May-Want-to-Change.md
+          page_count=$(find /tmp/live-wiki -maxdepth 1 -type f -name '*.md' | wc -l)
+          test "$page_count" -ge 10
+          echo "Prepared ${page_count} wiki Markdown pages."
+
+      - name: Commit and push live wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/live-wiki
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Live wiki already matches canonical pages.'
+            exit 0
+          fi
+          git commit -m 'Publish Combat Style Suite RC16 wiki'
+          git push origin HEAD:master
+
+      - name: Verify live wiki clone after push
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/wiki-readback
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.wiki.git" /tmp/wiki-readback
+          diff -ru --exclude='.git' wiki /tmp/wiki-readback
+          echo 'Live wiki matches canonical wiki/ byte-for-byte.'
