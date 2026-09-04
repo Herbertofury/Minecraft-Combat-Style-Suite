@@ -1,0 +1,95 @@
+name: Publish RC17
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-rc17.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-combat-style-suite-rc17
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify frozen RC17 and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify RC17 behavior and no-lag invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x build.sh verify.sh verify-release.sh scripts/guard-regressions.sh scripts/package-rc17.sh
+          ./scripts/guard-regressions.sh
+          ./verify.sh
+
+      - name: Build deterministic RC17 install package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/package-rc17.sh
+
+          DIRECTOR=$(find director/build/libs -maxdepth 1 -type f -name 'combat-style-director-5.0.0.jar' -print -quit)
+          COMPAT=$(find compat/build/libs -maxdepth 1 -type f -name 'punchy-style-compat-5.0.0.jar' -print -quit)
+          BUNDLE=$(find . -type f -name 'Combat-Style-Suite-5.0.0-RC17-just-works-polish.zip' -print -quit)
+
+          test -n "$DIRECTOR" && test -f "$DIRECTOR"
+          test -n "$COMPAT" && test -f "$COMPAT"
+          test -n "$BUNDLE" && test -f "$BUNDLE"
+
+          echo '381ecd3f4b730712420c2c5112628072a8fe55a006f676360d8b014808fef191  '"$DIRECTOR" | sha256sum --check --strict
+          echo '02bd08e79323fae9fc513ccb2870f0c414f94ca8cf14cff246e0b956d08dd8cd  '"$COMPAT" | sha256sum --check --strict
+          echo '4064d4ce0cf7febbb2691eb1274eda9a0a652adce2703aaf787bd12d1060d9d4  '"$BUNDLE" | sha256sum --check --strict
+
+          mkdir -p release
+          cp "$DIRECTOR" release/combat-style-director-5.0.0.jar
+          cp "$COMPAT" release/punchy-style-compat-5.0.0.jar
+          cp "$BUNDLE" release/Combat-Style-Suite-5.0.0-RC17-just-works-polish.zip
+          cat > release/SHA256SUMS.txt <<'SUMS'
+          381ecd3f4b730712420c2c5112628072a8fe55a006f676360d8b014808fef191  combat-style-director-5.0.0.jar
+          02bd08e79323fae9fc513ccb2870f0c414f94ca8cf14cff246e0b956d08dd8cd  punchy-style-compat-5.0.0.jar
+          4064d4ce0cf7febbb2691eb1274eda9a0a652adce2703aaf787bd12d1060d9d4  Combat-Style-Suite-5.0.0-RC17-just-works-polish.zip
+          91858d54301c4add8f96814f5fde024df6e007073ec0220ae67982c4fd4d52b2  Combat-Style-Suite-5.0.0-RC17-just-works-polish-source.zip
+          SUMS
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v5.0.0-rc17
+          name: Combat Style Suite 5.0.0 RC17 — Just Works Polish
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            RC17 is the Just Works Polish release for Forge 1.20.1 / Java 17.
+
+            Highlights:
+            - simplified everyday menu;
+            - unsafe Better Combat pre-handshake bypass physically removed;
+            - safe Vanilla fallback until the real Better Combat handshake arrives;
+            - event-only action-bar notices with no polling loop;
+            - one-shot Fix Everything Safely reconciliation;
+            - stronger no-lag/no-watchdog/no-registry-crawler CI guard;
+            - RC14 single-arm ownership and RC16 hot-provider/Punchy pairing behavior retained.
+
+            Deterministic source/harness/static/package verification is green. The remaining explicit field boundary is a fresh native Forge client run with the exact Epic Fight + Better Combat + YSM + Punchy + TaCZ binaries together.
+          files: |
+            release/combat-style-director-5.0.0.jar
+            release/punchy-style-compat-5.0.0.jar
+            release/Combat-Style-Suite-5.0.0-RC17-just-works-polish.zip
+            release/SHA256SUMS.txt
