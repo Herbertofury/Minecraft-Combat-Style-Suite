@@ -1,0 +1,83 @@
+name: Bootstrap RC17 Canonical Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-rc17-drive.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bootstrap-rc17-source
+  cancel-in-progress: false
+
+jobs:
+  publish-source:
+    name: Publish verified RC17 source tree
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download frozen RC17 source artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-delay 2 \
+            'https://drive.google.com/uc?export=download&id=1lkUPW4kLr-ONzCFn7L9n-fTuxgTXGCSO' \
+            -o /tmp/Combat-Style-Suite-5.0.0-RC17-source.zip
+          echo '91858d54301c4add8f96814f5fde024df6e007073ec0220ae67982c4fd4d52b2  /tmp/Combat-Style-Suite-5.0.0-RC17-source.zip' | sha256sum --check --strict
+          unzip -tq /tmp/Combat-Style-Suite-5.0.0-RC17-source.zip
+
+      - name: Replace bootstrap shell with canonical source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/rc17-source
+          mkdir -p /tmp/rc17-source
+          unzip -q /tmp/Combat-Style-Suite-5.0.0-RC17-source.zip -d /tmp/rc17-source
+          SRC='/tmp/rc17-source/combat-style-suite-5.0.0'
+          test -f "$SRC/README.md"
+          test -f "$SRC/build.sh"
+          test -d "$SRC/director"
+          test -d "$SRC/compat"
+          test -f "$SRC/.github/workflows/ci.yml"
+          test -f "$SRC/.github/workflows/release-rc17.yml"
+
+          # Keep the source-controlled live-wiki mirror that already exists in the repo.
+          rm -rf /tmp/wiki-keep
+          cp -a wiki /tmp/wiki-keep
+          cp .github/workflows/sync-wiki.yml /tmp/sync-wiki.yml
+
+          rsync -a --delete --exclude='.git/' "$SRC/" ./
+          rm -rf wiki
+          mv /tmp/wiki-keep wiki
+          mkdir -p .github/workflows
+          cp /tmp/sync-wiki.yml .github/workflows/sync-wiki.yml
+
+          rm -rf .bootstrap
+          rm -f .github/workflows/bootstrap-rc16-source.yml
+          rm -f .github/workflows/bootstrap-rc17-drive.yml
+          chmod +x build.sh verify.sh verify-release.sh scripts/guard-regressions.sh scripts/package-rc17.sh
+
+          test ! -e .bootstrap
+          test -f director/src/main/java/com/herberto/combatstyledirector/TransitionNotice.java
+          test -f director/src/main/java/com/herberto/combatstyledirector/DirectorToolsScreen.java
+          grep -q 'RC17 "just works" polish' README.md
+
+      - name: Commit real browsable RC17 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Publish Combat Style Suite 5.0.0 RC17 source'
+          git push origin HEAD:main
