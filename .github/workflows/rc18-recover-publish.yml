@@ -1,0 +1,129 @@
+name: Recover and Publish RC18
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/rc18-recover-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: recover-publish-rc18
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Recover source verify and publish RC18
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Recover canonical RC17 seed
+        shell: bash
+        run: |
+          set -euo pipefail
+          try_seed() {
+            label="$1"
+            shift
+            echo "Trying seed set: $label"
+            rm -rf /tmp/rc17-seed /tmp/rc17-source.tar.xz
+            mkdir -p /tmp/rc17-seed
+            cat "$@" | base64 --decode > /tmp/rc17-source.tar.xz || return 1
+            xz -t /tmp/rc17-source.tar.xz || return 1
+            tar -xJf /tmp/rc17-source.tar.xz -C /tmp/rc17-seed || return 1
+            src=$(find /tmp/rc17-seed -type f -path '*/combat-style-suite-5.0.0/build.sh' -printf '%h\n' | head -n1)
+            test -n "$src" || return 1
+            test -f "$src/README.md" || return 1
+            test -f "$src/verify.sh" || return 1
+            test -d "$src/director" || return 1
+            test -d "$src/compat" || return 1
+            printf '%s\n' "$src" > /tmp/rc17-src-path
+            echo "Recovered seed set: $label"
+            return 0
+          }
+          if try_seed six .bootstrap/rc17-source.b64.00 .bootstrap/rc17-source.b64.01 .bootstrap/rc17-source.b64.02 .bootstrap/rc17-source.b64.03 .bootstrap/rc17-source.b64.04 .bootstrap/rc17-source.b64.05; then exit 0; fi
+          if try_seed repaired .bootstrap/rc17-source.b64.00 .bootstrap/rc17-source.b64.01 .bootstrap/rc17-source.b64.02 .bootstrap/rc17-source.b64.03 .bootstrap/rc17-source.b64.04 .bootstrap/rc17-source.b64.05b .bootstrap/rc17-source.b64.06a .bootstrap/rc17-source.b64.06b; then exit 0; fi
+          if try_seed extended .bootstrap/rc17-source.b64.00 .bootstrap/rc17-source.b64.01 .bootstrap/rc17-source.b64.02 .bootstrap/rc17-source.b64.03 .bootstrap/rc17-source.b64.04 .bootstrap/rc17-source.b64.05 .bootstrap/rc17-source.b64.05b .bootstrap/rc17-source.b64.06a .bootstrap/rc17-source.b64.06b; then exit 0; fi
+          echo 'Could not reconstruct a valid RC17 seed.' >&2
+          exit 1
+
+      - name: Restore browsable source and apply RC18 patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode .bootstrap/rc18.patch.gz.b64 | gzip -dc > /tmp/rc18.patch
+          SRC=$(cat /tmp/rc17-src-path)
+          test -f "$SRC/stubs/net/minecraft/client/gui/GuiGraphics.java"
+          grep -Fq 'public void m_280488_' "$SRC/stubs/net/minecraft/client/gui/GuiGraphics.java"
+          rm -rf /tmp/wiki-keep
+          if [ -d wiki ]; then cp -a wiki /tmp/wiki-keep; fi
+          if [ -f .github/workflows/sync-wiki.yml ]; then cp .github/workflows/sync-wiki.yml /tmp/sync-wiki.yml; fi
+          rsync -a --delete --exclude='.git/' --exclude='wiki/' "$SRC/" ./
+          if [ -d /tmp/wiki-keep ]; then rm -rf wiki; mv /tmp/wiki-keep wiki; fi
+          if [ -f /tmp/sync-wiki.yml ]; then mkdir -p .github/workflows; cp /tmp/sync-wiki.yml .github/workflows/sync-wiki.yml; fi
+          git apply -p2 --whitespace=nowarn /tmp/rc18.patch
+          rm -rf .bootstrap
+          rm -f .github/workflows/release-rc17.yml
+          chmod +x build.sh verify.sh verify-release.sh scripts/guard-regressions.sh scripts/package-rc17.sh scripts/package-rc18.sh
+          test -d director
+          test -d compat
+          test -f .github/workflows/ci.yml
+          grep -Fq 'public int m_280488_' stubs/net/minecraft/client/gui/GuiGraphics.java
+          grep -Fq 'GuiProductionLinkageHarness' verify.sh
+          git diff --check
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Verify RC18
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/guard-regressions.sh
+          ./verify.sh
+          ./scripts/package-rc18.sh
+          echo '8fd2b831ea9033ee66d24739bb9e16eb26408043fb3be2e3e7d5f8aeb604bc37  dist/combat-style-director-5.0.0.jar' | sha256sum --check --strict
+          echo '5f26495452c934b6016a5bc10bff1d460c3e06c03ef45e8d5b80800ba9109286  dist/punchy-style-compat-5.0.0.jar' | sha256sum --check --strict
+          echo 'ac60221bf19ff80c266bc37cc7d6722f28f3e50ac7a5d9a69d01c368a37e8c5e  release-rc18/Combat-Style-Suite-5.0.0-RC18-production-gui-linkage-fix.zip' | sha256sum --check --strict
+          printf '%s\n' 'Combat Style Suite 5.0.0 RC18 - GitHub production linkage verification' 'PASS Suite regression guard' 'PASS packaged GUI descriptor guard' 'PASS packaged Director and Compat screen linkage harness' 'PASS full Suite verification' 'PASS frozen Director Compat and bundle hashes' > release-rc18/PRODUCTION-LINKAGE-VERIFY.txt
+
+      - name: Commit browsable RC18 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'Publish Combat Style Suite 5.0.0 RC18 production GUI linkage fix'
+          git push origin HEAD:main
+
+      - name: Publish RC18 prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v5.0.0-rc18
+          name: Combat Style Suite 5.0.0 RC18 - Production GUI Linkage Fix
+          prerelease: true
+          generate_release_notes: false
+          body: |
+            RC18 repairs the real Forge 1.20.1 Config-screen crash reported against RC17.
+
+            RC17 linked GuiGraphics.m_280488_(Font,String,int,int,int) with a void return descriptor even though Minecraft 1.20.1 production SRG returns int. Since the JVM return type is part of the descriptor, the Config screen failed with NoSuchMethodError when it rendered text.
+
+            RC18 corrects the production descriptor in both Suite JARs and adds packaged-bytecode plus screen-linkage regression gates. Combat routing, RC14 single-arm ownership, RC17 Better Combat handshake safety, event-only notices, provider toggles, and Punchy pairing behavior are unchanged.
+          files: |
+            dist/combat-style-director-5.0.0.jar
+            dist/punchy-style-compat-5.0.0.jar
+            release-rc18/Combat-Style-Suite-5.0.0-RC18-production-gui-linkage-fix.zip
+            release-rc18/SHA256SUMS.txt
+            release-rc18/PRODUCTION-LINKAGE-VERIFY.txt
