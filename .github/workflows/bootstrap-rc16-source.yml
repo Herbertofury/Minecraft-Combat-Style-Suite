@@ -1,4 +1,5 @@
 name: Bootstrap RC16 Source
+# RC17 publication recovery: retry canonical RC16 seed now that staged chunks were repaired.
 
 on:
   push:
