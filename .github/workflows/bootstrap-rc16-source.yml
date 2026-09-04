@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/bootstrap-rc16-source.yml'
+      - '.bootstrap/**'
   workflow_dispatch:
 
 permissions:
@@ -28,7 +29,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .bootstrap/source-xz.b64.* | base64 --decode > /tmp/combat-style-suite-rc16-source.tar.xz
+          shopt -s nullglob
+          chunks=(.bootstrap/source-xz.b64.*)
+          test "${#chunks[@]}" -eq 13
+          cat "${chunks[@]}" | base64 --decode > /tmp/combat-style-suite-rc16-source.tar.xz
           echo '4ff185f45f1d7fb087423ad4a1c364fd0824ec23367062e4aa6554e70cb04504  /tmp/combat-style-suite-rc16-source.tar.xz' | sha256sum --check --strict
 
       - name: Extract canonical source
