@@ -1,32 +1,33 @@
 ## ⚔️ Combat Style Suite
 
-**5.0.0 RC16 · Forge 1.20.1**
+**5.0.0 RC17 · Forge 1.20.1**
 
 ### Start here
 - [[Home]]
+- [[RC17 Just Works Polish]]
 - [[Getting Started]]
 - [[What It Does]]
 
-### How routing works
-- [[Combat Routing]]
+### Everyday controls
 - [[Provider Toggles]]
 - [[Punchy Pairing Matrix]]
+- [[Configuration Reference]]
+- [[Troubleshooting]]
+
+### How routing works
+- [[Combat Routing]]
 - [[TaCZ and First-Person Ownership]]
 - [[Smart Hybrid and Rules]]
 
-### Configure & tune
-- [[Configuration Reference]]
+### Performance & verification
 - [[Performance and No-Lag Design]]
-- [[Compatibility Matrix]]
-
-### Audit & verification
-- [[Excluded by Design and Source Audit]]
-- [[Compatibility Research]]
 - [[Testing and Verification]]
-- [[Troubleshooting]]
+- [[Excluded by Design and Source Audit]]
+- [[Compatibility Matrix]]
+- [[Compatibility Research]]
 - [[Things You May Want to Change]]
 - [[References]]
 
 ---
 
-**Design rule:** one basic-attack / first-person owner at a time; optional companion layers yield to that owner.
+**RC17 rule:** simple everyday UI, safe provider handoffs, one basic-attack / first-person owner at a time, no hidden compatibility watchdog.
