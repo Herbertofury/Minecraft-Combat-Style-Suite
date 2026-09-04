@@ -38,14 +38,14 @@ jobs:
             cat "$@" | base64 --decode > /tmp/rc17-source.tar.xz || return 1
             xz -t /tmp/rc17-source.tar.xz || return 1
             tar -xJf /tmp/rc17-source.tar.xz -C /tmp/rc17-seed || return 1
-            src=$(find /tmp/rc17-seed -type f -path '*/combat-style-suite-5.0.0/build.sh' -printf '%h\n' | head -n1)
+            src=$(find /tmp/rc17-seed -type f -name build.sh -printf '%h\n' | head -n1)
             test -n "$src" || return 1
             test -f "$src/README.md" || return 1
             test -f "$src/verify.sh" || return 1
             test -d "$src/director" || return 1
             test -d "$src/compat" || return 1
             printf '%s\n' "$src" > /tmp/rc17-src-path
-            echo "Recovered seed set: $label"
+            echo "Recovered seed set: $label at $src"
             return 0
           }
           if try_seed six .bootstrap/rc17-source.b64.00 .bootstrap/rc17-source.b64.01 .bootstrap/rc17-source.b64.02 .bootstrap/rc17-source.b64.03 .bootstrap/rc17-source.b64.04 .bootstrap/rc17-source.b64.05; then exit 0; fi
