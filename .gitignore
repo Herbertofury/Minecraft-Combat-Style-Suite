@@ -1,0 +1,18 @@
+# Gradle / build output
+.gradle/
+build/
+**/build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Minecraft runtime/dev output
+run/
+logs/
+crash-reports/
+
+# OS
+.DS_Store
+Thumbs.db
