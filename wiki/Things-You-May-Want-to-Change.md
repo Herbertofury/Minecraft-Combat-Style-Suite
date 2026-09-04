@@ -1,317 +1,126 @@
-# 🛠️ Things You May Want to Change
+# 🛠️ Things You May Want to Change — RC17
 
-This page is intentionally opinionated. It separates **good candidates for user preference** from **things I would not touch unless a real native reproducer demands it**.
+RC17 intentionally closes most of the “should we keep tweaking this?” questions. The normal compatibility architecture is now considered **frozen unless the real five-provider stack reproduces a concrete bug**.
 
-## At-a-glance recommendations
+## At-a-glance
 
-| Decision | RC16 | My recommendation |
-|---|---|---|
+| Decision | RC17 | Recommendation |
+|---|---:|---|
 | Startup in Vanilla | Yes | **KEEP** |
+| F12 = Vanilla / Better Combat / Epic Fight | Yes | **KEEP** |
 | Smart Hybrid off by default | Yes | **KEEP** |
-| F12 only Vanilla / Better / Epic | Yes | **KEEP** |
-| Punchy master off, pairings pre-authorized | Yes | **KEEP**, or turn master on for your personal pack |
-| All installed-provider integration gates available | Yes | **KEEP** |
-| Better Combat unsafe force-enable off | Yes | **KEEP** |
-| Ownership verification on | Yes | **KEEP** |
-| TaCZ temporary takeover | Yes | **KEEP** |
-| One-second NBT fallback only for advanced NBT rules | Yes | **KEEP** |
-| Pure Standby restart-hard | Yes | **KEEP** |
-| Deep Epic/YSM skeleton blending | Not generalized | **ONLY ADD IF NATIVE DEFECT APPEARS** |
-| Preserve Epic dodge while TaCZ owns gun presentation | Not guaranteed as a formal RC16 feature | **WORTH TESTING LATER** |
-| Automatic full weapon-registry crawling | No | **DO NOT ADD** |
+| Smart Hybrid hidden behind Advanced | Yes | **KEEP** |
+| YSM live gate | Yes | **KEEP** |
+| Punchy master + per-engine pairings | Yes | **KEEP** |
+| Better Combat unsafe pre-handshake bypass | **Removed entirely** | **KEEP REMOVED** |
+| Safe Vanilla fallback while waiting for Better handshake | Yes | **KEEP** |
+| Event-only action-bar notices | Yes | **KEEP** |
+| Fix Everything Safely | One-shot only | **KEEP** |
+| RC14 single-arm/right-click ownership fix | Yes | **KEEP** |
+| TaCZ temporary firearm takeover/restore | Yes | **KEEP** |
+| Full weapon-registry crawler | No | **DO NOT ADD** |
+| Client/server/player tick enforcement | No | **DO NOT ADD** |
 | Server heartbeat/watchdog | No | **DO NOT ADD** |
+| Recurring repair loop | No | **DO NOT ADD** |
+| Always-on ownership HUD | No | **DO NOT ADD by default** |
+| Deep Epic/YSM skeleton bridge | No | **Only add for a real native defect** |
+| Preserve experimental Epic dodge underneath TaCZ gun ownership | Not a formal feature | **Native-test first** |
 
----
+## What RC17 deliberately improved
 
-# 1. Startup engine: Vanilla
+### Simpler default menu
 
-### Current
+The main page is now for everyday use only. Advanced routing/rule/fusion/controller tools still exist, but they no longer make the normal experience look like a cockpit.
 
-RC16 starts from Vanilla as the safe baseline.
+That separation should remain. If a feature is not something you expect to touch during ordinary play, it belongs under **Advanced**.
 
-### Why keep it
+### Better Combat safety is no longer optional
 
-- guaranteed available;
-- easiest state to reason about after adding/removing mods;
-- avoids claiming Better Combat readiness before handshake;
-- avoids entering Epic battle state automatically;
-- clean fallback if an optional provider is missing.
+The old pre-handshake force-enable option is gone from production source/config/UI.
 
-### When to change
+If Better Combat is selected before readiness is observed, RC17 keeps the selection but temporarily uses Vanilla as the effective safe engine. When the real handshake arrives, Better Combat activates live.
 
-Only if you personally want every new install/config to boot directly into one external engine and are comfortable with its readiness behavior.
+There is nothing left for a user to accidentally enable here.
 
-**Recommendation: KEEP.**
+### Notices do not become a monitoring system
 
----
+Action-bar notices are emitted only for actual transitions. Stable gameplay emits nothing. Do not turn them into an always-visible HUD, timer, tick listener or polling service just to display state continuously.
 
-# 2. Smart Hybrid OFF by default
+### Repair stays one-shot
 
-### Current
+**Fix Everything Safely** exists to reconcile the current state when the user asks. It must not evolve into a watchdog that continuously “fixes” the game behind the player's back.
 
-Smart Hybrid is advanced and not part of F12.
+## The one unusual recurring fallback that remains
 
-### Why keep it
+The advanced NBT-sensitive rule path retains the documented client-only freshness fallback for in-place NBT mutation that Forge cannot universally signal.
 
-- manual F12 is predictable;
-- no surprise weapon-triggered mode switching;
-- capability probes stay out of normal play;
-- the NBT freshness sampler remains dormant;
-- simpler native debugging.
+It remains acceptable because it is:
 
-### When to enable
+- client-only;
+- dormant for normal F12/provider/Punchy/TaCZ use;
+- armed only by an advanced NBT-sensitive rule;
+- not a server heartbeat, watchdog or global combat-enforcement tick loop.
 
-When your pack has large weapon families that clearly belong to different combat engines and manual switching becomes annoying.
+Smart Hybrid remains **OFF by default**, so normal users never need this path.
 
-**Recommendation: KEEP OFF by default.**
+## Things I would still consider later
 
----
+### 1. Exact native five-provider certification
 
-# 3. F12 only cycles Vanilla / Better Combat / Epic Fight
+This is the most valuable remaining work, because it adds evidence instead of complexity:
 
-### Current
+- Epic Fight
+- Better Combat
+- YSM
+- Punchy
+- TaCZ
+
+Test F12, left/right click, offhand/use-item, YSM/Punchy/provider toggles and TaCZ takeover/restore in the actual packaged Forge client.
+
+If it is green, freeze the compatibility core.
+
+### 2. Tiny diagnostics polish after a real complaint
+
+A better explanation string or Doctor report is low risk because it can remain on-demand/event-only.
+
+### 3. Deeper pairwise renderer integration only for a reproduced defect
+
+Do not copy an Epic/YSM or Epic/TaCZ bridge simply because it exists. Add deeper transforms/pose coexistence only when the exact modpack shows a visible problem that high-level ownership cannot solve.
+
+## What should not be added
+
+The RC17 CI guard intentionally rejects the architectural regressions most likely to turn a lightweight compatibility layer into background overhead:
 
 ```text
-Vanilla → Better Combat → Epic Fight → Vanilla
+no ClientTickEvent combat enforcement
+no ServerTickEvent combat enforcement
+no PlayerTickEvent combat enforcement
+no heartbeat/watchdog
+no recurring repair service
+no full Forge item-registry crawler
+no full Better Combat weapon-registry crawler
+no unsafe Better Combat readiness bypass
+no recurring transition-notice system
 ```
 
-### Alternative
+That is now a build policy, not merely a recommendation.
 
-Insert Smart Hybrid or other fusion presets into F12.
-
-### Why I would not
-
-F12 should be muscle-memory predictable. Advanced modes already have other controls/menu access. Adding Hybrid makes accidental automatic routing much easier.
-
-**Recommendation: KEEP.**
-
----
-
-# 4. Punchy default
-
-### Current
-
-- master OFF;
-- all three primary pairings allowed.
-
-### Option A — keep current
-
-Best general distribution default: installing the Suite does not suddenly change first-person presentation.
-
-### Option B — your personal modpack
-
-If Punchy is absolutely part of the desired visual identity, you could ship your **pack config** with Punchy master ON while leaving the mod's universal default OFF.
-
-That is better than changing the mod-wide default for every user.
-
-**Recommendation: KEEP code default; customize your pack config if desired.**
-
----
-
-# 5. Provider gates ON by default
-
-### Misleading interpretation
-
-“Every gate ON means five mods are being polled all the time.”
-
-### Actual meaning
-
-The integrations are eligible. The selected owner and dirty context decide when work is required.
-
-Turning a gate OFF is useful when you deliberately want the Suite to stop using that provider, not as a routine performance tweak.
-
-**Recommendation: KEEP for installed providers.**
-
----
-
-# 6. Better Combat unsafe force-enable
-
-### Current
-
-OFF.
-
-### Why
-
-Better Combat has multiplayer-aware readiness/synchronization. Lying to the local client about readiness is more dangerous than briefly falling back safely.
-
-**Recommendation: DO NOT CHANGE** without a version-specific native reproducer and test.
-
----
-
-# 7. One-second NBT freshness sampler
-
-### Current
-
-Dormant unless an advanced NBT-sensitive Smart Hybrid/capability rule needs eventual detection of in-place NBT mutation.
-
-### Options
-
-- remove it entirely;
-- make it faster;
-- make it slower;
-- keep current scoped behavior.
-
-### My choice
-
-Keep it. A roughly one-second client-only fallback is a good tradeoff for a rare event Forge cannot universally signal. Removing it could leave automatic routing stale; making it faster provides little value for a non-animation-timing decision.
-
-**Recommendation: KEEP.**
-
----
-
-# 8. Epic Systems fusion
-
-### Current
-
-Advanced/explicit, not silently retained when a direct primary quick profile is chosen.
-
-### Could change
-
-You could make fusion “sticky” across F12 changes.
-
-### Why I would not
-
-That makes the visible primary mode lie by omission. If the UI says Better Combat but a hidden Epic layer remains active, diagnosing ownership becomes much harder.
-
-**Recommendation: KEEP explicit.**
-
----
-
-# 9. TaCZ + Epic Fight movement/dodge
-
-### Current
-
-RC16's important guaranteed behavior is **firearm presentation takeover + restoration of selected melee state**.
-
-### Interesting reference
-
-`Ardelhite/epic-tacz` demonstrates a deeper pairwise integration where Epic-related movement/dodge behavior can coexist with gun presentation while battle-mode pose ownership yields.
-
-### Possible improvement
-
-Split Epic Fight into finer capabilities during TaCZ ownership:
-
-```text
-Epic melee attack/battle pose: OFF while gun owns state
-Epic safe movement/dodge: optionally remain ON
-TaCZ ADS/reload/weapon presentation: ON
-```
-
-### Risk
-
-If the retained Epic subsystem touches input, arms, pose, camera or movement in a way TaCZ expects to own, this can reintroduce conflicts.
-
-**Recommendation: TEST IN REAL GAME FIRST. This is the best genuine future feature candidate.**
-
----
-
-# 10. Deeper Epic Fight + YSM integration
-
-### Current
-
-RC16 arbitrates provider/model ownership at a high level.
-
-### Reference
-
-EpicYSM shows how deep this problem can become: skeleton transforms, model switching, renderer choice, armor overlays, animation blending and diagnostics.
-
-### Possible improvement
-
-Add deeper dedicated Epic/YSM transform/blend handling.
-
-### Risk
-
-This is much more native-renderer/version-sensitive than high-level ownership routing. It can easily create a new maintenance project.
-
-**Recommendation: ONLY add for a specific visible defect in your exact YSM/Epic stack.**
-
----
-
-# 11. Automatic full weapon compatibility discovery
-
-### Temptation
-
-On join, scan every registered weapon, determine Better/Epic compatibility, and build a giant internal registry.
-
-### Why I would not
-
-- duplicates upstream compatibility data;
-- risks join-time hitching;
-- can become stale after datapack/config/provider changes;
-- creates broad hidden work for a feature manual F12 users never asked for;
-- some existing bridges have had to optimize exactly this kind of registration spike.
-
-RC16's cached narrow rule evaluation is safer.
-
-**Recommendation: DO NOT ADD globally.**
-
----
-
-# 12. Server-side policy / admin lock
-
-### Current
-
-RC16 focuses on player-side live selection plus minimal presentation synchronization.
-
-### Possible future feature
-
-Servers could optionally define policies such as:
-
-- allowed primary engines;
-- forced Vanilla in specific worlds/arenas;
-- disable Smart Hybrid server-wide;
-- lock Punchy presentation policy;
-- advertise recommended configuration to clients.
-
-### Why it could be useful
-
-For a curated multiplayer pack, admins may want deterministic combat rules.
-
-### Risk
-
-Do not turn this into a heartbeat/continuous enforcement system. Policy should synchronize on login/config change and be event-driven.
-
-**Recommendation: OPTIONAL FUTURE FEATURE if you actually need server governance.**
-
----
-
-# 13. More UI automation
-
-### Could add
-
-- a tiny HUD badge showing current primary owner;
-- a one-screen “safe defaults” preset;
-- per-engine Punchy indicators;
-- provider readiness indicators;
-- native conflict diagnostics (“Better Combat is gated OFF”, “waiting for handshake”, etc.).
-
-### Why these are safer than combat-code changes
-
-They improve observability without modifying ownership semantics.
-
-**Recommendation: if you want more polish, add diagnostics/UI before adding more automatic routing.**
-
----
-
-# My preferred frozen RC16
-
-If this were my long-term modpack baseline, I would ship exactly this behavioral policy:
+## Preferred frozen baseline
 
 ```text
 Vanilla default
 F12 manual three-engine cycle
-Smart Hybrid off
-Hard live provider gates
+simple everyday UI
+Smart Hybrid advanced + off by default
+live provider gates
 Punchy companion matrix
 YSM presentation arbitration
-TaCZ temporary firearm takeover
-Better Combat handshake safety
+TaCZ firearm takeover/restore
+real Better Combat handshake safety
 single first-person owner
-cached/event-driven routing
-no server watchdog
-no broad registry crawler
+event/transition-driven routing
+one-shot repair
+CI performance regression guard
 ```
 
-Then I would change code only after a **native exact-stack bug report** identifies a specific boundary.
-
-That is the shortest path to the “QOL, it just works, stop editing it every day” goal.
+This is the version I would stop redesigning and start **using**.
