@@ -20,6 +20,7 @@
 - [[Compatibility Matrix]]
 
 ### Audit & verification
+- [[Excluded by Design and Source Audit]]
 - [[Compatibility Research]]
 - [[Testing and Verification]]
 - [[Troubleshooting]]
