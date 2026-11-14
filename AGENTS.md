@@ -11,3 +11,7 @@ Keep this file and nested instructions project-owned: setup, commands, constrain
 - Existing publication/bootstrap workflows are path-filtered and can publish artifacts/source. Do not run or alter them merely to validate guidance. No ordinary pull-request test workflow exists in this checkout.
 - Distinguish historical RC16/RC17 harness/static/package evidence from fresh native acceptance. The exact Epic Fight + Better Combat + YSM + Punchy + TaCZ client combination requires its own real rendered-game verification.
 - Keep licensing and version-specific provider compatibility evidence local. Public source does not grant redistribution rights, and research recommendations are not proven performance improvements.
+
+## Project skills
+
+For provider routing, toggle changes, source recovery or RC17 acceptance, read `.agents/skills/provider-acceptance/SKILL.md`. Its transition matrix supplements, rather than replaces, executable tests and fresh native-client evidence.
